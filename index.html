@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Interaktywna prezentacja panoram 360° z przejściami między widokami."
+    />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Line Awesome: https://github.com/icons8/line-awesome -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/line-awesome@1.3.0/dist/line-awesome.min.css"
+      rel="stylesheet"
+    />
+    <title>Prezentacja panoramiczna</title>
+    <style>
+      :root {
+        --splash-fade-duration: 3s;
+        --splash-text-duration: 3s;
+        --progress-color: #20b2aa;
+        --progress-height: 3px;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+      }
+      #panorama-container {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* Ekran startowy – czarne tło */
+      .splash-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity var(--splash-fade-duration) ease-out;
+      }
+      .splash-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+        will-change: opacity;
+      }
+      .splash-text {
+        font-family: 'Inter', sans-serif;
+        font-weight: 100;
+        font-size: clamp(1.5rem, 4vw, 2.5rem);
+        letter-spacing: 0.05em;
+        color: rgba(255, 255, 255, 0.92);
+        opacity: 0;
+        animation: splash-text-in var(--splash-text-duration) ease-out forwards;
+      }
+      @keyframes splash-text-in {
+        0% {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Pasek postępu ładowania – cienki, turkusowy, na górze */
+      .splash-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--progress-height);
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 2001;
+      }
+      .splash-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--progress-color);
+        transition: width 0.2s ease-out;
+      }
+      .info-box {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+        z-index: 1000;
+        max-width: 90vw;
+      }
+      .info-box button {
+        background: #c00;
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        cursor: pointer;
+        margin-top: 10px;
+        border-radius: 4px;
+      }
+      .info-box button:hover {
+        background: #a00;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="panorama-container"></div>
+    <div class="splash-progress" id="splash-progress" aria-hidden="true">
+      <div class="splash-progress-bar" id="splash-progress-bar"></div>
+    </div>
+    <div class="splash-overlay" id="splash-overlay">
+      <div class="splash-text" id="splash-text">CONCEPTFAB Panorama Viewer</div>
+    </div>
+    <script>
+      // Polyfill dla kodu oczekującego środowiska Node (np. zależności bibliotek).
+      window.process = window.process || { env: {} };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.105.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/panolens@0.12.1/build/panolens.min.js"></script>
+    <script src="panorama-standalone.js"></script>
+  </body>
+</html>
