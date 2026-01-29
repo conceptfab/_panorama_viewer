@@ -16,7 +16,7 @@
     hotspotSize: 360, // 2× większe ikony (portale + infospoty)
     splashDuration: 3000,
     fadeToPanoramaDuration: 3000,
-    debug: true, // true = logi w konsoli (np. zmiana panoramy, Ctrl+klik współrzędne)
+    debug: false, // true = logi w konsoli (np. zmiana panoramy, Ctrl+klik współrzędne)
   };
 
   // --- POMOCNICZE ---
@@ -46,7 +46,7 @@
 
       var panoramasData = PANORAMA_CONFIG.map(function (item, i) {
         return {
-          image: 'img/' + item.file,
+          image: 'pano/' + item.file,
           position: new THREE.Vector3(
             item.position[0],
             item.position[1],
@@ -57,10 +57,16 @@
         };
       });
 
+      // Renderer z preserveDrawingBuffer: true, żeby zrzut canvas (np. w Vivaldi) nie był pusty
+      var renderer = new THREE.WebGLRenderer({
+        preserveDrawingBuffer: true,
+        antialias: true,
+      });
       var viewer = new PANOLENS.Viewer({
         container: document.getElementById(ID.PANORAMA_CONTAINER),
         controlBar: false,
         cameraFov: CONFIG.cameraFov,
+        renderer: renderer,
       });
 
       // Ekran startowy: preload (cache przeglądarki = Panolens użyje tych samych URL), progress, fade
@@ -83,6 +89,9 @@
           splashOverlay.remove();
         }
         if (splashProgress) splashProgress.remove();
+        var screenshotBtn = document.getElementById('screenshot-btn');
+        if (screenshotBtn)
+          screenshotBtn.classList.add('screenshot-btn-visible');
       }
 
       panoramasData.forEach(function (data) {
@@ -153,26 +162,26 @@
             '</svg>',
         );
 
-      // Infospoty z konfiguracji (ikony „i” – wyłączone, visible: false)
-      INFOSPOTS_CONFIG.forEach(function (cfg) {
-        var infospot = new PANOLENS.Infospot(
-          hotspotSize,
-          PANOLENS.DataImage.Info,
-          true,
-        );
-        infospot.position.set(
-          cfg.position[0],
-          cfg.position[1],
-          cfg.position[2],
-        );
-        infospot.addHoverText(cfg.hoverText);
-        panoramas[cfg.panoramaIndex].add(infospot);
-        infospot.addEventListener('click', function () {
-          showInfoBox(cfg.clickText);
-          if (infospot.element) infospot.element.style.display = 'none';
-        });
-        infospot.visible = cfg.visible;
-      });
+      // Hotspoty informacyjne – zakomentowane
+      // INFOSPOTS_CONFIG.forEach(function (cfg) {
+      //   var infospot = new PANOLENS.Infospot(
+      //     hotspotSize,
+      //     PANOLENS.DataImage.Info,
+      //     true,
+      //   );
+      //   infospot.position.set(
+      //     cfg.position[0],
+      //     cfg.position[1],
+      //     cfg.position[2],
+      //   );
+      //   infospot.addHoverText(cfg.hoverText);
+      //   panoramas[cfg.panoramaIndex].add(infospot);
+      //   infospot.addEventListener('click', function () {
+      //     showInfoBox(cfg.clickText);
+      //     if (infospot.element) infospot.element.style.display = 'none';
+      //   });
+      //   infospot.visible = cfg.visible;
+      // });
 
       // Linki między panoramami z konfiguracji (ikona portalu = angle-up)
       PANORAMA_CONFIG.forEach(function (cfg, fromIndex) {
@@ -187,7 +196,7 @@
           );
         });
       });
-      console.log('[DEBUG] Viewer gotowy, linki zastosowane.');
+      log('[DEBUG] Viewer gotowy, linki zastosowane.');
 
       viewer.add.apply(viewer, panoramas);
       viewer.setPanorama(panoramas[0]);
@@ -215,6 +224,75 @@
           );
         }
       });
+
+      // Zrzut widoku panoramy do pliku WebP (hotspoty chowane na chwilę)
+      var screenshotBtn = document.getElementById('screenshot-btn');
+      if (screenshotBtn) {
+        screenshotBtn.addEventListener('click', function () {
+          var canvas = viewer.container.querySelector('canvas');
+          if (!canvas) {
+            logError('Brak canvas do zrzutu.');
+            return;
+          }
+          var hidden = [];
+          viewer.panorama.traverse(function (obj) {
+            if (obj instanceof PANOLENS.Infospot) {
+              hidden.push(obj);
+              obj.visible = false;
+            }
+          });
+          function doCapture() {
+            try {
+              var w = canvas.width;
+              var h = canvas.height;
+              var tmp = document.createElement('canvas');
+              tmp.width = w;
+              tmp.height = h;
+              var ctx = tmp.getContext('2d');
+              ctx.drawImage(canvas, 0, 0);
+              var label = 'CONCEPTFAB Panorama Viewer';
+              var fontSize = Math.max(14, Math.round(w / 60));
+              ctx.font = '300 ' + fontSize + 'px Inter, sans-serif';
+              ctx.textAlign = 'right';
+              ctx.textBaseline = 'top';
+              var padX = Math.round(w * 0.04);
+              var padY = Math.round(h * 0.03);
+              ctx.shadowColor = 'rgba(0,0,0,0.6)';
+              ctx.shadowBlur = 4;
+              ctx.shadowOffsetX = 1;
+              ctx.shadowOffsetY = 1;
+              ctx.fillStyle = 'rgba(255,255,255,0.95)';
+              ctx.fillText(label, w - padX, padY);
+              var ext = 'webp';
+              var dataUrl;
+              try {
+                dataUrl = tmp.toDataURL('image/webp', 0.92);
+              } catch (e) {
+                ext = 'jpg';
+                dataUrl = tmp.toDataURL('image/jpeg', 0.92);
+              }
+              var name =
+                'panorama-zrzut-' +
+                new Date().toISOString().slice(0, 19).replace(/:/g, '-') +
+                '.' +
+                ext;
+              var a = document.createElement('a');
+              a.download = name;
+              a.href = dataUrl;
+              a.click();
+            } catch (e) {
+              logError('Zrzut nie powiódł się:', e);
+            } finally {
+              hidden.forEach(function (obj) {
+                obj.visible = true;
+              });
+            }
+          }
+          requestAnimationFrame(function () {
+            requestAnimationFrame(doCapture);
+          });
+        });
+      }
     })
     .catch(function (err) {
       console.error('Błąd ładowania panoramas.json:', err);
