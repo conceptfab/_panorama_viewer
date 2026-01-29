@@ -108,11 +108,11 @@ body {
   background: #a00;
 }
 
-/* Przycisk zrzutu – na lewo od fullscreen */
+/* Przycisk zrzutu – na lewo od auto-rotacji */
 #screenshot-btn {
   position: fixed;
   top: 12px;
-  right: 68px;
+  right: 124px;
   z-index: 9999;
   width: 48px;
   height: 48px;
@@ -202,6 +202,61 @@ body {
 }
 
 #fullscreen-btn svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+
+/* Przycisk auto-rotacji – między fullscreen a zrzutem */
+#autorotate-btn {
+  position: fixed;
+  top: 12px;
+  right: 68px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.15s;
+}
+
+#autorotate-btn.nav-btn-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Przygaszenie tylko gdy przycisk jest już widoczny (nie na starcie) */
+#autorotate-btn.nav-btn-visible[aria-pressed='false'] {
+  opacity: 0.6;
+}
+
+#autorotate-btn:hover,
+#autorotate-btn:focus-visible {
+  transform: scale(1.08);
+  opacity: 1;
+}
+
+#autorotate-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+#autorotate-btn:active {
+  transform: scale(0.96);
+}
+
+#autorotate-btn svg {
   width: 26px;
   height: 26px;
   fill: currentColor;

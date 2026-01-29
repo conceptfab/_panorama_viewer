@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  document.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+  });
+
   // --- STAŁE ID elementów DOM ---
   var ID = {
     PANORAMA_CONTAINER: 'panorama-container',
@@ -18,6 +22,10 @@
     fadeToPanoramaDuration: 3000,
     debug: false, // true = logi w konsoli (np. zmiana panoramy, Ctrl+klik współrzędne)
     jsonVersion: 1, // zwiększ przy zmianie panoramas.json (cache)
+    // Auto-rotacja: true = włączona, start po 30 s bez interakcji; pełny obrót → losowa panorama, losowy kierunek
+    autoRotate: true,
+    autoRotateSpeed: 0.5, // stopnie na sekundę (znak = kierunek, losowy przy każdej panoramie)
+    autoRotateActivationDuration: 30000, // 30 s bez ruchu myszy, potem start
   };
 
   // --- POMOCNICZE ---
@@ -68,6 +76,9 @@
         controlBar: false,
         cameraFov: CONFIG.cameraFov,
         renderer: renderer,
+        autoRotate: false, // start dopiero po 30 s (setTimeout poniżej)
+        autoRotateSpeed: CONFIG.autoRotateSpeed,
+        autoRotateActivationDuration: CONFIG.autoRotateActivationDuration,
       });
 
       // Ekran startowy: preload (cache przeglądarki = Panolens użyje tych samych URL), progress, fade
@@ -94,6 +105,8 @@
         if (screenshotBtn) screenshotBtn.classList.add('nav-btn-visible');
         var fullscreenBtn = document.getElementById('fullscreen-btn');
         if (fullscreenBtn) fullscreenBtn.classList.add('nav-btn-visible');
+        var autorotateBtn = document.getElementById('autorotate-btn');
+        if (autorotateBtn) autorotateBtn.classList.add('nav-btn-visible');
       }
 
       panoramasData.forEach(function (data) {
@@ -202,7 +215,82 @@
 
       viewer.add.apply(viewer, panoramas);
       viewer.setPanorama(panoramas[0]);
+      // Losowy kierunek i prędkość (min = połowa max) już przy pierwszej panoramie
+      var initialSign = Math.random() < 0.5 ? 1 : -1;
+      var minSpeed = CONFIG.autoRotateSpeed / 2;
+      var maxSpeed = CONFIG.autoRotateSpeed;
+      var initialSpeed =
+        (minSpeed + Math.random() * (maxSpeed - minSpeed)) * initialSign;
+      viewer.OrbitControls.autoRotateSpeed = initialSpeed;
+      viewer.options.autoRotateSpeed = initialSpeed;
       log('[Panorama] Aktualna: #0 – ' + panoramasData[0].file);
+
+      // Pełny obrót 360° → losowa panorama + losowy kierunek obrotu (działa tylko gdy auto-rotacja włączona)
+      var autorotatePrevAzimuth = null;
+      var autorotateAccumulated = 0;
+      var autorotateSkipFrames = 0; // po zmianie panoramy nie liczymy obrotu przez ~1 s (tween)
+      var TWO_PI = Math.PI * 2;
+
+      function autorotateLoop() {
+        requestAnimationFrame(autorotateLoop);
+        if (
+          !viewer.OrbitControls ||
+          !viewer.OrbitControls.autoRotate ||
+          panoramas.length === 0
+        ) {
+          autorotatePrevAzimuth = null;
+          autorotateAccumulated = 0;
+          return;
+        }
+        var target = viewer.OrbitControls.target;
+        var cam = viewer.camera.position;
+        var dx = cam.x - target.x;
+        var dz = cam.z - target.z;
+        var azimuth = Math.atan2(dx, dz);
+
+        if (autorotateSkipFrames > 0) {
+          autorotatePrevAzimuth = azimuth;
+          autorotateSkipFrames--;
+          return;
+        }
+        if (autorotatePrevAzimuth === null) {
+          autorotatePrevAzimuth = azimuth;
+          return;
+        }
+        var delta = azimuth - autorotatePrevAzimuth;
+        while (delta > Math.PI) delta -= TWO_PI;
+        while (delta < -Math.PI) delta += TWO_PI;
+        autorotateAccumulated += delta;
+        autorotatePrevAzimuth = azimuth;
+
+        if (Math.abs(autorotateAccumulated) >= TWO_PI) {
+          var currentIndex = panoramas.indexOf(viewer.panorama);
+          var nextIndex;
+          if (panoramas.length === 1) {
+            nextIndex = 0;
+          } else {
+            do {
+              nextIndex = Math.floor(Math.random() * panoramas.length);
+            } while (nextIndex === currentIndex);
+          }
+          viewer.setPanorama(panoramas[nextIndex]);
+          var sign = Math.random() < 0.5 ? 1 : -1;
+          var speed = (minSpeed + Math.random() * (maxSpeed - minSpeed)) * sign;
+          viewer.OrbitControls.autoRotateSpeed = speed;
+          viewer.options.autoRotateSpeed = speed;
+          autorotateAccumulated = 0;
+          autorotateSkipFrames = 60; // ~1 s przy 60 fps – pomijamy tween
+          log(
+            '[Panorama] Pełny obrót → losowa #' +
+              nextIndex +
+              ' – ' +
+              panoramasData[nextIndex].file +
+              ', kierunek ' +
+              (sign > 0 ? 'L' : 'P'),
+          );
+        }
+      }
+      autorotateLoop();
 
       // Tryb deweloperski: Ctrl+klik → współrzędne w konsoli (tylko gdy CONFIG.debug)
       var raycaster = new THREE.Raycaster();
@@ -226,6 +314,56 @@
           );
         }
       });
+
+      // Auto-rotacja – przełączanie włącz/wyłącz (Panolens: OrbitControls.autoRotate)
+      var autorotateBtn = document.getElementById('autorotate-btn');
+      if (autorotateBtn && viewer.OrbitControls) {
+        function setAutorotateButtonState(isOn) {
+          autorotateBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+          autorotateBtn.setAttribute(
+            'aria-label',
+            isOn
+              ? 'Auto-rotacja włączona (klik: wyłącz)'
+              : 'Auto-rotacja wyłączona (klik: włącz)',
+          );
+          autorotateBtn.setAttribute(
+            'title',
+            isOn
+              ? 'Auto-rotacja włączona (klik: wyłącz)'
+              : 'Auto-rotacja wyłączona (klik: włącz)',
+          );
+        }
+        var userDisabledAutorotate = false;
+        setAutorotateButtonState(
+          !!viewer.OrbitControls && viewer.OrbitControls.autoRotate,
+        );
+        // Start auto-rotacji po 30 s bezruchu (jeśli użytkownik nie wyłączył przyciskiem przed upływem 30 s)
+        if (CONFIG.autoRotate && viewer.OrbitControls) {
+          setTimeout(function () {
+            if (
+              !userDisabledAutorotate &&
+              viewer.OrbitControls &&
+              !viewer.OrbitControls.autoRotate
+            ) {
+              viewer.enableAutoRate();
+              setAutorotateButtonState(true);
+            }
+          }, CONFIG.autoRotateActivationDuration);
+        }
+        autorotateBtn.addEventListener('click', function () {
+          var next = !viewer.OrbitControls.autoRotate;
+          if (!next) userDisabledAutorotate = true;
+          else userDisabledAutorotate = false;
+          viewer.OrbitControls.autoRotate = next;
+          viewer.options.autoRotate = next;
+          if (next) {
+            viewer.enableAutoRate();
+          } else {
+            viewer.disableAutoRate();
+          }
+          setAutorotateButtonState(next);
+        });
+      }
 
       // Pełny ekran – całe body (żeby przyciski były widoczne), ikona przełącza na „wyjście”
       var fullscreenBtn = document.getElementById('fullscreen-btn');
