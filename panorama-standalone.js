@@ -17,6 +17,7 @@
     splashDuration: 3000,
     fadeToPanoramaDuration: 3000,
     debug: false, // true = logi w konsoli (np. zmiana panoramy, Ctrl+klik współrzędne)
+    jsonVersion: 1, // zwiększ przy zmianie panoramas.json (cache)
   };
 
   // --- POMOCNICZE ---
@@ -32,7 +33,7 @@
   }
 
   // Ładowanie definicji z panoramas.json (panoramy, linki, infospoty)
-  fetch('panoramas.json?t=' + Date.now(), { cache: 'no-store' })
+  fetch('panoramas.json?v=' + CONFIG.jsonVersion, { cache: 'no-store' })
     .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
@@ -90,8 +91,9 @@
         }
         if (splashProgress) splashProgress.remove();
         var screenshotBtn = document.getElementById('screenshot-btn');
-        if (screenshotBtn)
-          screenshotBtn.classList.add('screenshot-btn-visible');
+        if (screenshotBtn) screenshotBtn.classList.add('nav-btn-visible');
+        var fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) fullscreenBtn.classList.add('nav-btn-visible');
       }
 
       panoramasData.forEach(function (data) {
@@ -225,6 +227,39 @@
         }
       });
 
+      // Pełny ekran – całe body (żeby przyciski były widoczne), ikona przełącza na „wyjście”
+      var fullscreenBtn = document.getElementById('fullscreen-btn');
+      if (fullscreenBtn) {
+        var iconExpand = fullscreenBtn.querySelector('.icon-expand');
+        var iconCompress = fullscreenBtn.querySelector('.icon-compress');
+        function setFullscreenIcon(isFullscreen) {
+          if (iconExpand) iconExpand.style.display = isFullscreen ? 'none' : '';
+          if (iconCompress)
+            iconCompress.style.display = isFullscreen ? '' : 'none';
+          fullscreenBtn.setAttribute(
+            'aria-label',
+            isFullscreen ? 'Wyjdź z pełnego ekranu' : 'Pełny ekran',
+          );
+          fullscreenBtn.setAttribute(
+            'title',
+            isFullscreen ? 'Wyjdź z pełnego ekranu' : 'Pełny ekran',
+          );
+        }
+        document.addEventListener('fullscreenchange', function () {
+          setFullscreenIcon(!!document.fullscreenElement);
+        });
+        fullscreenBtn.addEventListener('click', function () {
+          if (!document.fullscreenElement) {
+            document.body.requestFullscreen().catch(function (err) {
+              logError('Fullscreen nie powiódł się:', err);
+              console.error('Fullscreen nie powiódł się:', err);
+            });
+          } else {
+            document.exitFullscreen();
+          }
+        });
+      }
+
       // Zrzut widoku panoramy do pliku WebP (hotspoty chowane na chwilę)
       var screenshotBtn = document.getElementById('screenshot-btn');
       if (screenshotBtn) {
@@ -282,6 +317,7 @@
               a.click();
             } catch (e) {
               logError('Zrzut nie powiódł się:', e);
+              console.error('Zrzut nie powiódł się:', e);
             } finally {
               hidden.forEach(function (obj) {
                 obj.visible = true;

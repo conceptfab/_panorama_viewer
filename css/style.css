@@ -1,0 +1,208 @@
+/* CONCEPTFAB Panorama Viewer – style głównej strony */
+
+:root {
+  --splash-fade-duration: 2s;
+  --splash-text-duration: 2s;
+  --progress-color: #00bbff;
+  --progress-height: 3px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+#panorama-container {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Ekran startowy – czarne tło */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--splash-fade-duration) ease-out;
+}
+
+.splash-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.splash-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 100;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  animation: splash-text-in var(--splash-text-duration) ease-out forwards;
+}
+
+@keyframes splash-text-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pasek postępu ładowania – cienki, turkusowy, na górze */
+.splash-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--progress-height);
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 2001;
+}
+
+.splash-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--progress-color);
+  transition: width 0.2s ease-out;
+}
+
+.info-box {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  display: none;
+  z-index: 1000;
+  max-width: 90vw;
+}
+
+.info-box button {
+  background: #c00;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  cursor: pointer;
+  margin-top: 10px;
+  border-radius: 4px;
+}
+
+.info-box button:hover {
+  background: #a00;
+}
+
+/* Przycisk zrzutu – na lewo od fullscreen */
+#screenshot-btn {
+  position: fixed;
+  top: 12px;
+  right: 68px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.15s;
+}
+
+#screenshot-btn.nav-btn-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#screenshot-btn:hover,
+#screenshot-btn:focus-visible {
+  transform: scale(1.08);
+}
+
+#screenshot-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+#screenshot-btn:active {
+  transform: scale(0.96);
+}
+
+#screenshot-btn svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+
+/* Przycisk fullscreen – przy prawej krawędzi */
+#fullscreen-btn {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.15s;
+  font-size: 1.35rem;
+}
+
+#fullscreen-btn.nav-btn-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#fullscreen-btn:hover,
+#fullscreen-btn:focus-visible {
+  transform: scale(1.08);
+}
+
+#fullscreen-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+#fullscreen-btn:active {
+  transform: scale(0.96);
+}
+
+#fullscreen-btn svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
