@@ -1,0 +1,44 @@
+{
+  "panoramas": [
+    {
+      "file": "4K_pano_00.webp",
+      "position": [1000, 0, 0],
+      "links": [
+        { "to": 1, "position": [4764, -134, 1490] },
+        { "to": 2, "position": [4529, -287, 2083] }
+      ]
+    },
+    {
+      "file": "4K_pano_01.webp",
+      "position": [1000, 0, 0],
+      "links": [
+        { "to": 0, "position": [-3540, -449, 3490] },
+        { "to": 2, "position": [4964, -263, 488] }
+      ]
+    },
+    {
+      "file": "4K_pano_02.webp",
+      "position": [1000, 0, 0],
+      "links": [
+        { "to": 0, "position": [-4979, -368, -109] },
+        { "to": 1, "position": [-4744, -582, -1439] }
+      ]
+    }
+  ],
+  "infospots": [
+    {
+      "panoramaIndex": 0,
+      "position": [2000, -180, 40],
+      "hoverText": "Kontakt",
+      "clickText": "Kontakt – informacje kontaktowe.",
+      "visible": false
+    },
+    {
+      "panoramaIndex": 0,
+      "position": [2000, -100, -300],
+      "hoverText": "Kliknij.",
+      "clickText": "To jest szczegółowa informacja w oknie!",
+      "visible": false
+    }
+  ]
+}

@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Edytor hotspotów – CONCEPTFAB</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        overflow: hidden;
+      }
+      #panorama-container {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+      .editor-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 16px 20px;
+        border-top: 1px solid #333;
+        z-index: 1000;
+      }
+      .editor-panel h2 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #20b2aa;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .row:last-child {
+        margin-bottom: 0;
+      }
+      label {
+        font-size: 0.85rem;
+        color: #999;
+      }
+      select {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        border: 1px solid #444;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        min-width: 180px;
+      }
+      .coords {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem;
+        background: #252525;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        color: #20b2aa;
+        min-width: 280px;
+      }
+      .coords.empty {
+        color: #666;
+      }
+      button {
+        background: #20b2aa;
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      button:hover {
+        background: #1a9b94;
+      }
+      .snippet {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.75rem;
+        background: #252525;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        color: #aaa;
+        margin-top: 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 8px;
+      }
+      .hint code {
+        font-family: Consolas, monospace;
+        background: #333;
+        padding: 0 4px;
+        border-radius: 3px;
+      }
+      /* Splash – ten sam mechanizm co w index.html (ukrywa viewer do załadowania tekstur) */
+      .splash-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 2s ease-out;
+      }
+      .splash-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+        will-change: opacity;
+      }
+      .splash-text {
+        font-family: inherit;
+        font-size: clamp(1rem, 3vw, 1.5rem);
+        color: rgba(255, 255, 255, 0.9);
+      }
+      .splash-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 2001;
+      }
+      .splash-progress-bar {
+        height: 100%;
+        width: 0%;
+        background: #20b2aa;
+        transition: width 0.2s ease-out;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="panorama-container"></div>
+    <div class="splash-progress" id="splash-progress" aria-hidden="true">
+      <div class="splash-progress-bar" id="splash-progress-bar"></div>
+    </div>
+    <div class="splash-overlay" id="splash-overlay">
+      <div class="splash-text" id="splash-text">Ładowanie panoram…</div>
+    </div>
+    <div class="editor-panel">
+      <h2>Edytor hotspotów</h2>
+      <div class="row">
+        <label for="panorama-select">Panorama:</label>
+        <select id="panorama-select">
+          <option value="">Ładowanie…</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Współrzędne (do wklejenia w panoramas.json → position):</label>
+        <span class="coords empty" id="coords-display"
+          >— Kliknij w widok —</span
+        >
+        <button type="button" id="copy-btn" disabled>Kopiuj</button>
+      </div>
+      <p class="hint">
+        Kliknij w widok → skopiuj współrzędne → wklej w
+        <code>panoramas.json</code> w <code>"position": [ wklej tutaj ]</code>.
+        Serwer: Live Server lub <code>npx serve</code>.
+      </p>
+    </div>
+    <script>
+      // Polyfill dla kodu oczekującego środowiska Node (Panolens go wymaga – ten sam co w index.html).
+      window.process = window.process || { env: {} };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.105.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/panolens@0.12.1/build/panolens.min.js"></script>
+    <script>
+      (function () {
+        'use strict';
+
+        var container = document.getElementById('panorama-container');
+        var panoramaSelect = document.getElementById('panorama-select');
+        var coordsDisplay = document.getElementById('coords-display');
+        var copyBtn = document.getElementById('copy-btn');
+
+        var viewer = null;
+        var panoramas = [];
+        var panoramasData = [];
+        var lastPoint = null;
+        var currentPanoramaIndex = 0;
+        var raycaster = new THREE.Raycaster();
+        var mouse = new THREE.Vector2();
+
+        function getCoordsString() {
+          if (!lastPoint) return '';
+          // x z edytora jest po przeciwnej stronie sfery – negujemy, żeby portal był po właściwej stronie
+          return (
+            Math.round(-lastPoint.x) +
+            ', ' +
+            Math.round(lastPoint.y) +
+            ', ' +
+            Math.round(lastPoint.z)
+          );
+        }
+
+        function onContainerClick(event) {
+          if (!viewer || !viewer.panorama) return;
+          var rect = container.getBoundingClientRect();
+          mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(mouse, viewer.camera);
+          var hits = raycaster.intersectObject(viewer.panorama, true);
+          if (hits.length > 0) {
+            lastPoint = hits[0].point.clone();
+            var s = getCoordsString();
+            coordsDisplay.textContent = s;
+            coordsDisplay.classList.remove('empty');
+            copyBtn.disabled = false;
+            console.log(
+              '[Hotspot] Panorama #' + currentPanoramaIndex + ' → ' + s,
+            );
+          }
+        }
+
+        fetch('panoramas.json?t=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+          })
+          .then(function (data) {
+            var PANORAMA_CONFIG = data.panoramas;
+            if (!PANORAMA_CONFIG || !PANORAMA_CONFIG.length) {
+              throw new Error('Brak panoram w panoramas.json');
+            }
+
+            panoramaSelect.innerHTML = '';
+            PANORAMA_CONFIG.forEach(function (item, i) {
+              var opt = document.createElement('option');
+              opt.value = String(i);
+              opt.textContent = '#' + i + ' – ' + item.file;
+              panoramaSelect.appendChild(opt);
+            });
+
+            panoramasData = PANORAMA_CONFIG.map(function (item, i) {
+              return {
+                image: 'img/' + item.file,
+                position: new THREE.Vector3(
+                  item.position[0],
+                  item.position[1],
+                  item.position[2],
+                ),
+                file: item.file,
+                index: i,
+              };
+            });
+
+            // Ten sam mechanizm co w index.html + panorama-standalone.js: viewer od razu, preload forEach, splash ukrywa do załadowania
+            viewer = new PANOLENS.Viewer({
+              container: container,
+              controlBar: false,
+              cameraFov: 55,
+            });
+
+            var splashOverlay = document.getElementById('splash-overlay');
+            var splashProgressBar = document.getElementById(
+              'splash-progress-bar',
+            );
+            var splashProgress = document.getElementById('splash-progress');
+            var totalImages = panoramasData.length;
+            var loadedCount = 0;
+            var splashDuration = 3000;
+            var fadeDuration = 2000;
+
+            function setProgress(percent) {
+              if (splashProgressBar) {
+                splashProgressBar.style.width =
+                  Math.min(100, Math.max(0, percent)) + '%';
+              }
+            }
+            function onSplashFadeEnd() {
+              if (splashOverlay) {
+                splashOverlay.style.willChange = '';
+                splashOverlay.remove();
+              }
+              if (splashProgress) splashProgress.remove();
+            }
+
+            panoramasData.forEach(function (data) {
+              var img = new Image();
+              img.onload = function () {
+                loadedCount += 1;
+                setProgress((loadedCount / totalImages) * 100);
+              };
+              img.onerror = function () {
+                loadedCount += 1;
+                setProgress((loadedCount / totalImages) * 100);
+              };
+              img.src = data.image;
+            });
+
+            setTimeout(function () {
+              if (splashOverlay) {
+                splashOverlay.style.willChange = 'opacity';
+                splashOverlay.classList.add('hidden');
+              }
+              setTimeout(onSplashFadeEnd, fadeDuration);
+            }, splashDuration);
+
+            panoramas = panoramasData.map(function (data, i) {
+              var p = new PANOLENS.ImagePanorama(data.image);
+              p.addEventListener('enter', function () {
+                viewer.tweenControlCenter(data.position, 400);
+              });
+              p.addEventListener('error', function () {
+                console.error('[Edytor] Błąd ładowania:', data.image);
+              });
+              return p;
+            });
+
+            viewer.add.apply(viewer, panoramas);
+            viewer.setPanorama(panoramas[0]);
+
+            viewer.addEventListener('panorama-change', function () {
+              var p = viewer.panorama;
+              for (var i = 0; i < panoramas.length; i++) {
+                if (panoramas[i] === p) {
+                  currentPanoramaIndex = i;
+                  panoramaSelect.value = String(i);
+                  break;
+                }
+              }
+            });
+
+            panoramaSelect.addEventListener('change', function () {
+              var idx = parseInt(panoramaSelect.value, 10);
+              currentPanoramaIndex = idx;
+              viewer.setPanorama(panoramas[idx]);
+            });
+
+            container.addEventListener('click', onContainerClick);
+
+            copyBtn.addEventListener('click', function () {
+              var text = getCoordsString();
+              if (!text) return;
+              navigator.clipboard.writeText(text).then(
+                function () {
+                  copyBtn.textContent = 'Skopiowano!';
+                  setTimeout(function () {
+                    copyBtn.textContent = 'Kopiuj';
+                  }, 1500);
+                },
+                function () {
+                  copyBtn.textContent = 'Błąd';
+                  setTimeout(function () {
+                    copyBtn.textContent = 'Kopiuj';
+                  }, 1500);
+                },
+              );
+            });
+          })
+          .catch(function (err) {
+            console.error('Błąd ładowania panoramas.json:', err);
+            panoramaSelect.innerHTML =
+              '<option value="">Błąd ładowania</option>';
+            if (container) {
+              container.innerHTML =
+                '<p style="color:#c00;padding:40px;text-align:center;">Błąd ładowania panoramas.json.<br>Uruchom stronę przez serwer (np. Live Server lub <code>npx serve</code>), nie jako file://.</p>';
+            }
+          });
+      })();
+    </script>
+  </body>
+</html>
