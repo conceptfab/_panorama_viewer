@@ -44,15 +44,6 @@
         throw new Error('Brak panoram w panoramas.json');
       }
 
-      console.log('[DEBUG] panoramas.json załadowany OK');
-      console.log('[DEBUG] Panoramy:', PANORAMA_CONFIG.length);
-      PANORAMA_CONFIG.forEach(function (p, i) {
-        console.log(
-          '[DEBUG] Panorama #' + i + ' ' + p.file + ', linki:',
-          JSON.stringify(p.links),
-        );
-      });
-
       var panoramasData = PANORAMA_CONFIG.map(function (item, i) {
         return {
           image: 'img/' + item.file,
@@ -184,21 +175,10 @@
       });
 
       // Linki między panoramami z konfiguracji (ikona portalu = angle-up)
-      console.log('[DEBUG] Stosuję linki z panoramas.json:');
       PANORAMA_CONFIG.forEach(function (cfg, fromIndex) {
         cfg.links.forEach(function (link) {
           var toPanorama = panoramas[link.to];
           var pos = link.position;
-          console.log(
-            '[DEBUG]   Panorama #' +
-              fromIndex +
-              ' -> #' +
-              link.to +
-              ', position (z panoramas.json):',
-            pos[0],
-            pos[1],
-            pos[2],
-          );
           panoramas[fromIndex].link(
             toPanorama,
             new THREE.Vector3(pos[0], pos[1], pos[2]),
@@ -237,7 +217,7 @@
       });
     })
     .catch(function (err) {
-      console.error('[DEBUG] BŁĄD ładowania panoramas.json:', err);
+      console.error('Błąd ładowania panoramas.json:', err);
       var el = document.getElementById(ID.PANORAMA_CONTAINER);
       if (el)
         el.innerHTML =
