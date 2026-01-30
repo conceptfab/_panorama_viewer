@@ -167,6 +167,13 @@
       }
 
       var hotspotSize = CONFIG.hotspotSize;
+      var w = window.innerWidth;
+      var h = window.innerHeight;
+      if (w <= 768 && h > w) {
+        hotspotSize *= 2; // 2× większe w pionie smartfona
+      } else if (h <= 768 && w > h) {
+        hotspotSize *= 1.5; // 1.5× większe w poziomie smartfona
+      }
 
       // Ikona portali: angle-up w stylu Line Awesome (cienki chevron ^, nie wypełniony trójkąt)
       var LINK_ICON_ANGLE_UP =

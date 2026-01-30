@@ -51,6 +51,13 @@ body {
   animation: splash-text-in var(--splash-text-duration) ease-out forwards;
 }
 
+/* Smartfon w pionie – logo 2× mniejsze */
+@media (max-width: 768px) and (orientation: portrait) {
+  .splash-text {
+    font-size: clamp(0.75rem, 2vw, 1.25rem);
+  }
+}
+
 @keyframes splash-text-in {
   0% {
     opacity: 0;
